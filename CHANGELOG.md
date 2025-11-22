@@ -1,3 +1,15 @@
+## [] - 2025-11-22
+
+### Release Information
+- **Branch**: development
+- **PR**: #1
+- **Title**: feat: test version 1 to development
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 
+
+
 ## [0.3.0-dev.1-patch.1] - 2025-11-21
 
 ### Release Information
