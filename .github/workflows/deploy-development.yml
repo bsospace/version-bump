@@ -3,7 +3,7 @@ name: Deploy to Development Environment
 on:
   push:
     tags:
-      - 'v*-dev.*'
+      - 'v*'
 
 jobs:
   deploy-development:
