@@ -145,7 +145,7 @@ jobs:
         #   # Push โดยใช้ PAT (ใส่ Token ลงไปหน้า URL เลย)
         #   # เปลี่ยน PAT เป็นชื่อ Secret ที่คุณตั้งไว้
         #   git push https://${{ secrets.PAT }}@github.com/${{ github.repository }}.git "v$NEW_VERSION"
-        uses: actions-ecosystem/action-push-tag@v1
+        uses: thejeff77/action-push-tag@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
