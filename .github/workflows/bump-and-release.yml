@@ -140,7 +140,7 @@ jobs:
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-          
+
       - name: Push Changes and Tags
         run: |
           NEW_VERSION=${{ steps.new_version.outputs.version }}
@@ -173,3 +173,4 @@ jobs:
             - Merged by: @${{ github.event.pull_request.merged_by.login }}
             - Build: [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           draft: false
+          
