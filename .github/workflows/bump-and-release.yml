@@ -136,20 +136,21 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Authenticate with GitHub App
+        id: auth
         uses: tibdex/github-app-token@v2.1.0
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Push Changes and Tags
+        env:
+          GITHUB_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           NEW_VERSION=${{ steps.new_version.outputs.version }}
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@users.noreply.github.com"
           git tag "v$NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+          git push origin https://x-access-token:${{ steps.auth.outputs.token }}@github.com/${{ github.repository }}.git "v$NEW_VERSION"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
