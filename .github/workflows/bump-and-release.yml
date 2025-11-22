@@ -1,24 +1,5 @@
 name: Bump Version and Create Release
 
-# คำอธิบายการ bump version (ภาษาไทย)
-#
-# กฎการ bump:
-# - Merge เข้า `main`:
-#   - ถ้า source branch ขึ้นต้นด้วย `fix/` หรือ `hotfix/` -> bump patch: vMAJOR.MINOR.(PATCH+1)
-#   - มิฉะนั้น -> bump minor: vMAJOR.(MINOR+1).0
-# - Merge เข้า `development`:
-#   - สร้าง/เพิ่ม pre-release บนฐานเวอร์ชันปัจจุบัน: vMAJOR.MINOR.PATCH-dev.N
-#   - ถ้า source branch ขึ้นต้นด้วย `fix/` จะเพิ่ม suffix patch: vMAJOR.MINOR.PATCH-dev.N-patch.M
-#
-# วิธีตรวจหาเวอร์ชันปัจจุบัน:
-# - จะตรวจ `git tags` ก่อน (รวม pre-release tags เช่น v0.2.0-dev.2)
-# - ถ้าไม่มี tags จะ fallback ไปใช้ GitHub Releases API
-# - ก่อนสร้าง tag ใหม่ workflow จะตรวจให้แน่ใจว่า tag นั้นยังว่างอยู่ (increment counters จนไม่ซ้ำ)
-#
-# หมายเหตุ:
-# - เพื่อให้ workflow ทำงานถูกต้อง ควรมี tags ถูก push ขึ้น remote (หรือ workflow ต้องมีสิทธิ์ fetch tags)
-# - หากต้องการทดสอบ locally ให้ clone repo และ `git fetch --tags` เพื่อให้มีข้อมูล tags ครบ
-
 on:
   pull_request:
     types: closed
@@ -176,6 +157,7 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: github.event.pull_request.base.ref == "main"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
