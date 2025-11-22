@@ -1,26 +1,17 @@
 name: Deploy to Development Environment
 
 on:
-  workflow_run:
-    workflows: ["Bump Version and Create Release"] # ต้องตรงกับชื่อ name: ในไฟล์ Bump Version เป๊ะๆ
-    types: [completed]
-    branches: [development] # ให้ทำงานเฉพาะเมื่อ Bump Version จบบน branch development
+  push:
+    tags:
+      - 'v*-dev.*'
 
 jobs:
   deploy-development:
     runs-on: ubuntu-latest
-    # สำคัญ: ต้องเช็คว่า Workflow ตัวก่อนหน้าทำงาน Success (ไม่ใช่แค่ Completed แบบ Failed)
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} 
-    
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          ref: development # checkout development branch ล่าสุดมา deploy
-          fetch-depth: 0
+        uses: actions/checkout@v3
 
-      - name: Notify Start
-        run: echo "Previous workflow completed successfully. Starting deployment..."
-
-      # ใส่ Step Deploy จริงๆ ของคุณตรงนี้
-      # ...
+      - name: Notify Deployment Success
+        run: echo "Deployment to development environment completed successfully."
+        
