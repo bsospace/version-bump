@@ -136,9 +136,18 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Push Changes and Tags
-        uses: thejeff77/action-push-tag@v1.0.0
-        with:
-          tag: v${{ steps.new_version.outputs.version }}
+        # uses: thejeff77/action-push-tag@v1.0.0
+        # with:
+        #   tag: v${{ steps.new_version.outputs.version }}
+        run: |
+          NEW_VERSION=${{ steps.new_version.outputs.version }}
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+          git checkout main
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
