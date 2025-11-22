@@ -1,3 +1,15 @@
+## [0.2.0] - 2025-11-22
+
+### Release Information
+- **Branch**: main
+- **PR**: #9
+- **Title**: v0.2.0 release
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 0.2.0
+
+
 ## [0.1.0-dev.5] - 2025-11-22
 
 ### Release Information
