@@ -100,11 +100,13 @@ jobs:
 
           # case hotfix merge to main ex. 0.1.0 -> 0.1.1
           if [ "$TARGET_BRANCH" == "main" ]; then
+            echo "On main branch"
             # split out of text after PATCH -dev* out
             PATCH=${PATCH%%-*}
             # ex. 0-dev* -> 0
             # If source is not a development/, bump patch; otherwise bump minor
             if [[ "$SOURCE_BRANCH" != "development" ]]; then
+              echo "SOURCE_BRANCH is not development"
               NEW_MAJOR=$MAJOR
               NEW_MINOR=$MINOR
               NEW_PATCH=$((PATCH + 1))
@@ -120,9 +122,12 @@ jobs:
             fi
 
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            if [[ "$SOURCE_BRANCH" == "feat/*" ]]; then
+            echo "On development branch"
+            if [[ "$SOURCE_BRANCH" == feat/* ]]; then
+              echo "Bumping development: feature branch"
               # ถ้า PATCH มี -dev.N อยู่แล้ว ให้เพิ่ม N
               if [[ "$PATCH" == *"-dev."* ]]; then
+                echo "Feature branch on development with existing dev suffix"
                 DEV_PART=${PATCH#*-dev.}
                 DEV_NUM=${DEV_PART%%-*}
                 DEV_NUM=$((DEV_NUM + 1))
@@ -130,6 +135,7 @@ jobs:
                 PREFIX=${PATCH%%-dev.*}
                 PATCH="$PREFIX-dev.$DEV_NUM"
               else
+                echo "Feature branch on development without existing dev suffix"
                 # ถ้าไม่มี -dev.N ให้เริ่มที่ 1
                 PATCH="${PATCH}-dev.1"
               fi
@@ -208,6 +214,7 @@ jobs:
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
+        if: github.event.pull_request.base.ref == 'main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
