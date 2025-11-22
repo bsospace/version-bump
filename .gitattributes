@@ -1,0 +1,7 @@
+# บังคับให้ไฟล์ทุกคนเป็น LF เสมอ ไม่ว่าจะใช้ Windows หรือ Mac
+* text=auto eol=lf
+
+# หรือถ้าจะเจาะจงเฉพาะไฟล์ workflow
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
