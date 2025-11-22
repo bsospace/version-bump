@@ -123,7 +123,7 @@ jobs:
 
           elif [ "$TARGET_BRANCH" == "development" ]; then
             echo "On development branch"
-            if [[ "$SOURCE_BRANCH" == "feat/*" ]]; then
+            if [[ "$SOURCE_BRANCH" == feat/* ]]; then
               echo "Bumping development: feature branch"
               # ถ้า PATCH มี -dev.N อยู่แล้ว ให้เพิ่ม N
               if [[ "$PATCH" == *"-dev."* ]]; then
