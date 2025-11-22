@@ -136,19 +136,20 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: Push Changes and Tags
-        run: |
-          NEW_VERSION=${{ steps.new_version.outputs.version }}
+        # run: |
+        #   NEW_VERSION=${{ steps.new_version.outputs.version }}
           
-          # ตั้งค่า Git User (เหมือนเดิม)
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@users.noreply.github.com"
+        #   # สร้าง Tag
+        #   git tag "v$NEW_VERSION"
           
-          # สร้าง Tag
-          git tag "v$NEW_VERSION"
-          
-          # Push โดยใช้ PAT (ใส่ Token ลงไปหน้า URL เลย)
-          # เปลี่ยน PAT เป็นชื่อ Secret ที่คุณตั้งไว้
-          git push https://${{ secrets.PAT }}@github.com/${{ github.repository }}.git "v$NEW_VERSION"
+        #   # Push โดยใช้ PAT (ใส่ Token ลงไปหน้า URL เลย)
+        #   # เปลี่ยน PAT เป็นชื่อ Secret ที่คุณตั้งไว้
+        #   git push https://${{ secrets.PAT }}@github.com/${{ github.repository }}.git "v$NEW_VERSION"
+        uses: actions-ecosystem/action-push-tag@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          tag: v${{ steps.new_version.outputs.version }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
