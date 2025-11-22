@@ -1,3 +1,15 @@
+## [0.1.0-dev.4] - 2025-11-22
+
+### Release Information
+- **Branch**: development
+- **PR**: #6
+- **Title**: new pr 0.1.0-dev.4
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 0.1.0-dev.4
+
+
 ## [0.1.0-dev.3] - 2025-11-22
 
 ### Release Information
