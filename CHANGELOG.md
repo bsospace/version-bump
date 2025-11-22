@@ -2,6 +2,18 @@
 
 ### Release Information
 - **Branch**: development
+- **PR**: #2
+- **Title**: fix: pipeline for test
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 
+
+
+## [] - 2025-11-22
+
+### Release Information
+- **Branch**: development
 - **PR**: #1
 - **Title**: feat: test version 1 to development
 - **Merged by**: @ohmjezzer
