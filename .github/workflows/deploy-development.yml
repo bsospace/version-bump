@@ -3,7 +3,7 @@ name: Deploy to Development Environment
 on:
   push:
     tags:
-      - 'v*-dev.*'
+      - 'v*'
 
 jobs:
   deploy-development:
@@ -14,4 +14,3 @@ jobs:
 
       - name: Notify Deployment Success
         run: echo "Deployment to development environment completed successfully."
-        
