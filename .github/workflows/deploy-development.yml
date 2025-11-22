@@ -1,9 +1,10 @@
 name: Deploy to Development Environment
 
 on:
-  push:
-    branches:
-      - development
+  workflow_run:
+    workflows: ["Bump Version and Create Release"] # ต้องตรงกับชื่อ name: ในไฟล์ Bump Version เป๊ะๆ
+    types: [completed]
+    branches: [development] # ให้ทำงานเฉพาะเมื่อ Bump Version จบบน branch development
 
 jobs:
   deploy-development:
