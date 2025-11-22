@@ -173,7 +173,8 @@ jobs:
       #   run: |
       #     git push origin ${{ github.event.pull_request.base.ref }}
       #     git push origin v${{ steps.new_version.outputs.version }} --force
-      - uses: thejeff77/action-push-tag@v1.0.0
+      - name: Push Changes and Tags
+        uses: thejeff77/action-push-tag@v1.0.0
         with:
           tag: ${{ steps.new_version.outputs.version }}
 
