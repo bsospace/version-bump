@@ -154,11 +154,6 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: Commit Changes
-        run: |
-          git add CHANGELOG.md
-          git commit -m "chore: release version ${{ steps.new_version.outputs.version }}"
-
       - name: Create or Update Git Tag
         run: |
           TAG_NAME="v${{ steps.new_version.outputs.version }}"
@@ -199,7 +194,4 @@ jobs:
             - Title: ${{ github.event.pull_request.title }}
             - Merged by: @${{ github.event.pull_request.merged_by.login }}
             - Build: [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            ## Changelog
-            ${{ steps.changelog.outputs.changelog }}
           draft: false
