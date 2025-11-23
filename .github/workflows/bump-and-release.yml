@@ -134,6 +134,7 @@ jobs:
 
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
+          
 
       - name: Push Changes and Tags
         uses: thejeff77/action-push-tag@v1.0.0
