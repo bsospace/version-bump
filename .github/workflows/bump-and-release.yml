@@ -73,7 +73,11 @@ jobs:
             CURRENT_VERSION="0.0.0"
           else
             echo "Found latest tag: $LATEST_TAG"
-            CURRENT_VERSION="${LATEST_TAG#v}"
+            if: [ same_tag == "true" ]
+              CURRENT_VERSION="${LATEST_TAG_DAV#v}"
+            else
+              CURRENT_VERSION="${LATEST_TAG#v}"
+            fi
           fi
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
