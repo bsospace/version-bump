@@ -63,8 +63,10 @@ jobs:
 
           same_tag=true
           if [[ "$LATEST_TAG_DAV_REMOVED" != "$LATEST_TAG" ]]; then
-            echo "same_tag=false" >> $GITHUB_OUTPUT
+            same_tag=false
           fi
+          
+          echo "same_tag=$same_tag" >> $GITHUB_OUTPUT
 
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found. Defaulting to v0.0.0"
