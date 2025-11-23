@@ -65,6 +65,7 @@ jobs:
             CURRENT_VERSION="${LATEST_TAG#v}"
           fi
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
           
 
       - name: Calculate New Version
