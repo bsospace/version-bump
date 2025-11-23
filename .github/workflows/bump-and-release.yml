@@ -19,13 +19,15 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      # - name: Configure Git
+      #   run: |
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
