@@ -2,7 +2,7 @@ name: Bump Version and Create Release
 
 on:
   pull_request:
-    types: closed
+    types: [closed]
     branches:
       - main
       - development
@@ -19,155 +19,137 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
+          token: ${{ secrets.PAT }} # ใช้ PAT ตรงนี้เพื่อให้มีสิทธิ์ Push ตลอดทั้ง Job
           fetch-depth: 0
 
-      # - name: Configure Git
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Configure Git with PAT Identity
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }} # ใช้ PAT ในการยิง API เช็คตัวเอง
+        run: |
+          # 1. ยิง API ถาม GitHub ว่า PAT นี้เป็นของใคร
+          USER_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user)
+          
+          # 2. ดึง Login Name และ ID
+          USER_LOGIN=$(echo "$USER_INFO" | jq -r .login)
+          USER_ID=$(echo "$USER_INFO" | jq -r .id)
+          
+          # 3. ดึง Email (ถ้าเจ้าของ PAT ซ่อน Email ไว้ ให้ใช้รูปแบบ no-reply ของ GitHub)
+          USER_EMAIL=$(echo "$USER_INFO" | jq -r .email)
+          if [ "$USER_EMAIL" == "null" ]; then
+            USER_EMAIL="${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
+          fi
+          
+          echo "Configuring Git as: $USER_LOGIN <$USER_EMAIL>"
+          
+          # 4. Set Config
+          git config user.name "$USER_LOGIN"
+          git config user.email "$USER_EMAIL"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Get Current Version from GitHub Releases
+      - name: Get Current Version
         id: current_version
         run: |
-          # Ensure we have tags locally (fetch/prune from origin)
-          git fetch --prune --tags origin
+          # หา Tag ล่าสุดที่เป็นรูปแบบ vX.Y.Z หรือ vX.Y.Z-dev.N
+          # ใช้ git describe เพื่อความแม่นยำ หรือ sort -V หากต้องการแค่ list
+          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
 
-          # Prefer latest tag (including pre-releases) matching semver prefix vMAJOR.MINOR.PATCH
-          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1 || true)
-
-          # if tag latest found
-          if [ -n "$LATEST_TAG" ]; then
-            CURRENT_VERSION="${LATEST_TAG#v}"
-            echo "Found latest tag: $LATEST_TAG"
-          # if tag latest not found
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No tags found. Defaulting to v0.0.0"
+            CURRENT_VERSION="0.0.0"
           else
-            # Fallback to GitHub Releases API if no tags are present
-            LATEST_TAG=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              https://api.github.com/repos/${{ github.repository }}/releases/latest \
-              | jq -r '.tag_name // empty')
-            
-            # if no releases found
-            if [ -z "$LATEST_TAG" ]; then
-              CURRENT_VERSION="0.1.0"
-              echo "No tags/releases found, using initial version"
-            else
-              CURRENT_VERSION="${LATEST_TAG#v}"
-              echo "Found latest release: $LATEST_TAG"
-            fi
+            echo "Found latest tag: $LATEST_TAG"
+            CURRENT_VERSION="${LATEST_TAG#v}"
           fi
 
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $CURRENT_VERSION"
 
       - name: Calculate New Version
         id: new_version
+        env:
+          CURRENT_VERSION: ${{ steps.current_version.outputs.version }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          CURRENT=${{ steps.current_version.outputs.version }} 
-          TARGET_BRANCH=${{ github.event.pull_request.base.ref }}
-          SOURCE_BRANCH=${{ github.event.pull_request.head.ref }}
+          echo "Target: $TARGET_BRANCH | Source: $SOURCE_BRANCH | Current: $CURRENT_VERSION"
 
-          echo "Target branch: $TARGET_BRANCH"
-          echo "Source branch: $SOURCE_BRANCH"
+          # แยก Version เป็นส่วนๆ (Major.Minor.Patch) และส่วน Suffix (ถ้ามี)
+          # ลบ Suffix (-dev.X) ออกก่อนเพื่อหา Base Version
+          BASE_VERSION=${CURRENT_VERSION%%-*}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
 
-          # Split version
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          # ex. 0.1.0-dev* or 0.1.0
+          NEW_VERSION=""
 
-          # case hotfix merge to main ex. 0.1.0 -> 0.1.1
+          # ==========================================
+          # LOGIC: Merge to MAIN (Production Release)
+          # ==========================================
           if [ "$TARGET_BRANCH" == "main" ]; then
-            echo "On main branch"
-            # split out of text after PATCH -dev* out
-            PATCH=${PATCH%%-*}
-            # ex. 0-dev* -> 0
-            # If source is not a development/, bump patch; otherwise bump minor
-            if [[ "$SOURCE_BRANCH" != "development" ]]; then
-              echo "SOURCE_BRANCH is not development"
-              NEW_MAJOR=$MAJOR
-              NEW_MINOR=$MINOR
-              NEW_PATCH=$((PATCH + 1))
-              NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
-              echo "Bumping main: patch bump due to hotfix branch"
-            # if source is development/, bump minor ex. 0.1.0 -> 0.2.0
-            else
-              NEW_MAJOR=$MAJOR
+            
+            if [ "$SOURCE_BRANCH" == "development" ]; then
+              # Release Flow: development -> main (Minor Bump)
+              # ex. 0.1.0 -> 0.2.0
               NEW_MINOR=$((MINOR + 1))
-              NEW_PATCH=0
-              NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
-              echo "Bumping main: minor bump"
+              NEW_VERSION="$MAJOR.$NEW_MINOR.0"
+              echo "Strategy: Minor bump (Release)"
+            else
+              # Hotfix Flow: hotfix/* -> main (Patch Bump)
+              # ex. 0.1.0 -> 0.1.1
+              NEW_PATCH=$((PATCH + 1))
+              NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+              echo "Strategy: Patch bump (Hotfix)"
             fi
 
+          # ==========================================
+          # LOGIC: Merge to DEVELOPMENT (Dev Build)
+          # ==========================================
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            echo "On development branch"
-            if [[ "$SOURCE_BRANCH" == feat/* ]]; then
-              echo "Bumping development: feature branch"
-              # ถ้า PATCH มี -dev.N อยู่แล้ว ให้เพิ่ม N
-              if [[ "$PATCH" == *"-dev."* ]]; then
-                echo "Feature branch on development with existing dev suffix"
-                DEV_PART=${PATCH#*-dev.}
-                DEV_NUM=${DEV_PART%%-*}
-                DEV_NUM=$((DEV_NUM + 1))
-                # เก็บ prefix ก่อน -dev.N
-                PREFIX=${PATCH%%-dev.*}
-                PATCH="$PREFIX-dev.$DEV_NUM"
-              else
-                echo "Feature branch on development without existing dev suffix"
-                # ถ้าไม่มี -dev.N ให้เริ่มที่ 1
-                PATCH="${PATCH}-dev.1"
-              fi
-
-              NEW_MAJOR=$MAJOR
-              NEW_MINOR=$MINOR
-              NEW_PATCH=$PATCH
-              NEW_VERSION="$NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
-              echo "Base version for development branch: $NEW_MAJOR.$NEW_MINOR.$NEW_PATCH"
+            
+            # ตรวจสอบว่าเวอร์ชันปัจจุบันเป็น dev อยู่แล้วหรือไม่
+            if [[ "$CURRENT_VERSION" == *"-dev."* ]]; then
+              # ถ้าเป็น dev อยู่แล้ว ให้เพิ่มเลขต่อท้าย
+              # ex. 0.1.0-dev.1 -> 0.1.0-dev.2
+              LAST_NUM=${CURRENT_VERSION##*.}
+              NEXT_NUM=$((LAST_NUM + 1))
+              NEW_VERSION="${BASE_VERSION}-dev.${NEXT_NUM}"
+            else
+              # ถ้ามาจาก version ปกติ ให้เริ่มนับ dev.1
+              # ex. 0.1.0 -> 0.1.0-dev.1
+              NEW_VERSION="${BASE_VERSION}-dev.1"
             fi
+            echo "Strategy: Dev increment"
+
           else
-            echo "Unknown branch: $TARGET_BRANCH"
+            echo "Error: Unknown target branch '$TARGET_BRANCH'"
             exit 1
           fi
 
+          echo "New Version Computed: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "New version: $NEW_VERSION"
-          
 
-      - name: Push Changes and Tags
+      - name: Push New Tag
         run: |
           NEW_VERSION=${{ steps.new_version.outputs.version }}
+          TAG_NAME="v$NEW_VERSION"
           
-          # ตั้งค่า Remote URL ให้แนบ PAT เข้าไปสำหรับการยืนยันตัวตน
-          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}
+          echo "Pushing tag $TAG_NAME"
           
-          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
-          git push origin "v$NEW_VERSION"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          # ไม่ต้อง set-url เพราะใช้ token ในขั้นตอน checkout แล้ว
+          git push origin "$TAG_NAME"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.event.pull_request.base.ref == 'main'
+        # Release ใช้ GITHUB_TOKEN ปกติได้ หรือจะใช้ PAT ก็ได้ถ้าต้องการ trigger workflow อื่นต่อ
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.new_version.outputs.version }}
-          name: Release ${{ steps.new_version.outputs.version }} 
+          name: Release ${{ steps.new_version.outputs.version }}
+          generate_release_notes: true # ให้ GitHub Gen Note อัตโนมัติจาก PR
           body: |
-            # Release ${{ steps.new_version.outputs.version }}
-
-            ## Version Bump
-            - Previous Version: ${{ steps.current_version.outputs.version }}
-            - New Version: ${{ steps.new_version.outputs.version }}
-            - Target Branch: ${{ github.event.pull_request.base.ref }}
-
             ## Release Details
-            - PR: #${{ github.event.pull_request.number }}
-            - Title: ${{ github.event.pull_request.title }}
-            - Merged by: @${{ github.event.pull_request.merged_by.login }}
-            - Build: [View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          draft: false
-          
+            - **Version:** ${{ steps.new_version.outputs.version }}
+            - **Previous:** ${{ steps.current_version.outputs.version }}
+            - **PR:** #${{ github.event.pull_request.number }}
+            - **Branch:** ${{ github.event.pull_request.head.ref }} &rarr; ${{ github.event.pull_request.base.ref }}
+            - **Merged by:** @${{ github.event.pull_request.merged_by.login }}
