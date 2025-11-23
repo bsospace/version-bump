@@ -55,30 +55,37 @@ jobs:
       - name: Get Current Version
         id: current_version
         run: |
-          # get only no -dev
+          # 1. หา Tag
           LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
           LATEST_TAG_DAV=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+' | sort -V | tail -n1)
 
+          # 2. ตัด suffix ของ Dev ออกเพื่อเทียบ
           LATEST_TAG_DAV_REMOVED=${LATEST_TAG_DAV%%-*}
 
-          same_tag=true
+          # 3. Logic เช็ค same_tag
+          same_tag="true"
           if [[ "$LATEST_TAG_DAV_REMOVED" != "$LATEST_TAG" ]]; then
-            same_tag=false
+            same_tag="false"
           fi
           
           echo "same_tag=$same_tag" >> $GITHUB_OUTPUT
 
+          # 4. กำหนด CURRENT_VERSION
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found. Defaulting to v0.0.0"
             CURRENT_VERSION="0.0.0"
           else
             echo "Found latest tag: $LATEST_TAG"
-            if [ "$same_tag" == "true" ]
+            
+            # --- จุดที่แก้ไข (เพิ่ม ; then) ---
+            if [ "$same_tag" == "true" ]; then
               CURRENT_VERSION="${LATEST_TAG_DAV#v}"
             else
               CURRENT_VERSION="${LATEST_TAG#v}"
             fi
+            # -----------------------------
           fi
+          
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Calculate New Version
