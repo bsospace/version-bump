@@ -1,8 +1,8 @@
 name: Debug Spy
 
 on:
-  push:
-    tags: ['*']
+  release:
+    types: [published]
 
 jobs:
   spy:
