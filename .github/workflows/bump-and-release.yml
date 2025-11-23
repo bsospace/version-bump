@@ -92,12 +92,12 @@ jobs:
 
           # === DEVELOPMENT ===
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            if [[ "$CURRENT_VERSION" == *"-dev."* ]]; then
+            if [[ "$CURRENT_VERSION" == *"-dev."* || "$SOURCE_BRANCH" == "main" ]]; then
               LAST_NUM=${CURRENT_VERSION##*.}
               NEXT_NUM=$((LAST_NUM + 1))
               NEW_VERSION="${BASE_VERSION}-dev.${NEXT_NUM}"
             else
-              NEW_VERSION="${BASE_VERSION}-dev.1"
+              NEW_VERSION="$MAJOR.$((MINOR + 1)).0-dev.1"
             fi
             echo "Strategy: Dev increment"
           else
@@ -113,11 +113,19 @@ jobs:
           NEW_VERSION=${{ steps.new_version.outputs.version }}
           TAG_NAME="v$NEW_VERSION"
           
-          echo "Pushing tag $TAG_NAME"
+          npm version "$NEW_VERSION"
+
+          git push --follow-tags
+      # - name: Push New Tag
+      #   run: |
+      #     NEW_VERSION=${{ steps.new_version.outputs.version }}
+      #     TAG_NAME="v$NEW_VERSION"
           
-          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          # Token ถูก set ตั้งแต่ checkout แล้ว จึง push ได้เลย
-          git push origin "$TAG_NAME"
+      #     echo "Pushing tag $TAG_NAME"
+          
+      #     git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+      #     # Token ถูก set ตั้งแต่ checkout แล้ว จึง push ได้เลย
+      #     git push origin "$TAG_NAME"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
