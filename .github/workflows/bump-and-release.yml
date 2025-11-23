@@ -66,8 +66,6 @@ jobs:
           fi
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
-          
-
       - name: Calculate New Version
         id: new_version
         env:
