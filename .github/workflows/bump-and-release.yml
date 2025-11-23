@@ -55,7 +55,16 @@ jobs:
       - name: Get Current Version
         id: current_version
         run: |
-          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+          # get only no -dev
+          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          LATEST_TAG_DAV=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+' | sort -V | tail -n1)
+
+          LATEST_TAG_DAV_REMOVED=${LATEST_TAG_DAV%%-*}
+
+          same_tag=true
+          if [[ "$LATEST_TAG_DAV_REMOVED" != "$LATEST_TAG" ]]; then
+            echo "same_tag=false" >> $GITHUB_OUTPUT
+          fi
 
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found. Defaulting to v0.0.0"
@@ -91,7 +100,7 @@ jobs:
 
           # === DEVELOPMENT ===
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            if [[ "$CURRENT_VERSION" == *"-dev."* || "$SOURCE_BRANCH" == "main" ]]; then
+            if [[ "$CURRENT_VERSION" == *"-dev."* || "$SOURCE_BRANCH" == "main" && ${{ steps.current_version.outputs.same_tag }} == 'false' ]]; then
               LAST_NUM=${CURRENT_VERSION##*.}
               NEXT_NUM=$((LAST_NUM + 1))
               NEW_VERSION="${BASE_VERSION}-dev.${NEXT_NUM}"
