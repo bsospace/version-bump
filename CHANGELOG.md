@@ -1,3 +1,27 @@
+## [0.3.0] - 2025-11-22
+
+### Release Information
+- **Branch**: main
+- **PR**: #11
+- **Title**: fix: remove condition
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 0.3.0
+
+
+## [0.2.1] - 2025-11-22
+
+### Release Information
+- **Branch**: main
+- **PR**: #10
+- **Title**: hotfix v0.2.1
+- **Merged by**: @ohmjezzer
+
+### Changes
+- Bump version to 0.2.1
+
+
 ## [0.2.0] - 2025-11-22
 
 ### Release Information
