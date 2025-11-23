@@ -73,7 +73,7 @@ jobs:
             CURRENT_VERSION="0.0.0"
           else
             echo "Found latest tag: $LATEST_TAG"
-            if: [ same_tag == "true" ]
+            if [ "$same_tag" == "true" ]
               CURRENT_VERSION="${LATEST_TAG_DAV#v}"
             else
               CURRENT_VERSION="${LATEST_TAG#v}"
