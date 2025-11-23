@@ -55,15 +55,37 @@ jobs:
       - name: Get Current Version
         id: current_version
         run: |
-          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+          # 1. หา Tag
+          LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          LATEST_TAG_DAV=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+' | sort -V | tail -n1)
 
+          # 2. ตัด suffix ของ Dev ออกเพื่อเทียบ
+          LATEST_TAG_DAV_REMOVED=${LATEST_TAG_DAV%%-*}
+
+          # 3. Logic เช็ค same_tag
+          same_tag="true"
+          if [[ "$LATEST_TAG_DAV_REMOVED" != "$LATEST_TAG" ]]; then
+            same_tag="false"
+          fi
+          
+          echo "same_tag=$same_tag" >> $GITHUB_OUTPUT
+
+          # 4. กำหนด CURRENT_VERSION
           if [ -z "$LATEST_TAG" ]; then
             echo "No tags found. Defaulting to v0.0.0"
             CURRENT_VERSION="0.0.0"
           else
             echo "Found latest tag: $LATEST_TAG"
-            CURRENT_VERSION="${LATEST_TAG#v}"
+            
+            # --- จุดที่แก้ไข (เพิ่ม ; then) ---
+            if [ "$same_tag" == "false" ]; then
+              CURRENT_VERSION="${LATEST_TAG_DAV#v}"
+            else
+              CURRENT_VERSION="${LATEST_TAG#v}"
+            fi
+            # -----------------------------
           fi
+          
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Calculate New Version
@@ -72,6 +94,7 @@ jobs:
           CURRENT_VERSION: ${{ steps.current_version.outputs.version }}
           TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          SAME_TAG: ${{ steps.current_version.outputs.same_tag }}
         run: |
           echo "Target: $TARGET_BRANCH | Source: $SOURCE_BRANCH | Current: $CURRENT_VERSION"
           BASE_VERSION=${CURRENT_VERSION%%-*}
@@ -91,12 +114,14 @@ jobs:
 
           # === DEVELOPMENT ===
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            if [[ "$CURRENT_VERSION" == *"-dev."* || "$SOURCE_BRANCH" == "main" ]]; then
+            if [[ "$CURRENT_VERSION" == *"-dev."* && "$SAME_TAG" == "true" ]]; then
+              NEW_VERSION="$MAJOR.$((MINOR + 1)).0-dev.1"
+            elif [[ "$CURRENT_VERSION" == *"-dev."* || "$SOURCE_BRANCH" == "main" ]]; then
               LAST_NUM=${CURRENT_VERSION##*.}
               NEXT_NUM=$((LAST_NUM + 1))
               NEW_VERSION="${BASE_VERSION}-dev.${NEXT_NUM}"
             else
-              NEW_VERSION="$MAJOR.$((MINOR + 1)).0-dev.1"
+              echo "Strategy: Dev increment"
             fi
             echo "Strategy: Dev increment"
           else
