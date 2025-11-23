@@ -75,15 +75,11 @@ jobs:
             echo "No tags found. Defaulting to v0.0.0"
             CURRENT_VERSION="0.0.0"
           else
-            echo "Found latest tag: $LATEST_TAG"
-            
-            # --- จุดที่แก้ไข (เพิ่ม ; then) ---
             if [ "$same_tag" == "false" ]; then
               CURRENT_VERSION="${LATEST_TAG_DAV#v}"
             else
               CURRENT_VERSION="${LATEST_TAG#v}"
             fi
-            # -----------------------------
           fi
           
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
