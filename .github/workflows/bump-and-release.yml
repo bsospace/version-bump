@@ -137,13 +137,12 @@ jobs:
           
 
       - name: Push Changes and Tags
-        # uses: thejeff77/action-push-tag@v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-        # with:
-        #   tag: v${{ steps.new_version.outputs.version }}
         run: |
           NEW_VERSION=${{ steps.new_version.outputs.version }}
+          
+          # ตั้งค่า Remote URL ให้แนบ PAT เข้าไปสำหรับการยืนยันตัวตน
+          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}
+          
           git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
           git push origin "v$NEW_VERSION"
 
