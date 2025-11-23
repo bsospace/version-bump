@@ -17,40 +17,44 @@ jobs:
       pull-requests: write
 
     steps:
+      # 1. สร้าง Token ชั่วคราวจาก GitHub App
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # 2. Checkout โดยใช้ Token ของ App
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT }} # ใช้ PAT ตรงนี้เพื่อให้มีสิทธิ์ Push ตลอดทั้ง Job
+          token: ${{ steps.app-token.outputs.token }} # ใช้ Token ที่เพิ่งสร้าง
           fetch-depth: 0
 
-      - name: Configure Git with PAT Identity
+      # 3. Config Git ให้เป็นตัวตนของ App (Bot Identity)
+      - name: Configure Git Identity
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }} # ใช้ PAT ในการยิง API เช็คตัวเอง
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # 1. ยิง API ถาม GitHub ว่า PAT นี้เป็นของใคร
-          USER_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user)
+          # ยิง API เพื่อขอข้อมูลของ App Bot ตัวเอง
+          # GitHub App จะมี user type เป็น "Bot" และมี login name เฉพาะ
+          USER_INFO=$(curl -s -H "Authorization: token $GH_TOKEN" https://api.github.com/user)
           
-          # 2. ดึง Login Name และ ID
           USER_LOGIN=$(echo "$USER_INFO" | jq -r .login)
           USER_ID=$(echo "$USER_INFO" | jq -r .id)
           
-          # 3. ดึง Email (ถ้าเจ้าของ PAT ซ่อน Email ไว้ ให้ใช้รูปแบบ no-reply ของ GitHub)
-          USER_EMAIL=$(echo "$USER_INFO" | jq -r .email)
-          if [ "$USER_EMAIL" == "null" ]; then
-            USER_EMAIL="${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
-          fi
+          # Email ของ GitHub App Bot จะมี format มาตรฐานคือ: id+name[bot]@users.noreply.github.com
+          USER_EMAIL="${USER_ID}+${USER_LOGIN}@users.noreply.github.com"
           
           echo "Configuring Git as: $USER_LOGIN <$USER_EMAIL>"
           
-          # 4. Set Config
           git config user.name "$USER_LOGIN"
           git config user.email "$USER_EMAIL"
 
       - name: Get Current Version
         id: current_version
         run: |
-          # หา Tag ล่าสุดที่เป็นรูปแบบ vX.Y.Z หรือ vX.Y.Z-dev.N
-          # ใช้ git describe เพื่อความแม่นยำ หรือ sort -V หากต้องการแค่ list
           LATEST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
 
           if [ -z "$LATEST_TAG" ]; then
@@ -60,7 +64,6 @@ jobs:
             echo "Found latest tag: $LATEST_TAG"
             CURRENT_VERSION="${LATEST_TAG#v}"
           fi
-
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Calculate New Version
@@ -71,52 +74,32 @@ jobs:
           SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           echo "Target: $TARGET_BRANCH | Source: $SOURCE_BRANCH | Current: $CURRENT_VERSION"
-
-          # แยก Version เป็นส่วนๆ (Major.Minor.Patch) และส่วน Suffix (ถ้ามี)
-          # ลบ Suffix (-dev.X) ออกก่อนเพื่อหา Base Version
           BASE_VERSION=${CURRENT_VERSION%%-*}
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
-
           NEW_VERSION=""
 
-          # ==========================================
-          # LOGIC: Merge to MAIN (Production Release)
-          # ==========================================
+          # === MAIN ===
           if [ "$TARGET_BRANCH" == "main" ]; then
-            
             if [ "$SOURCE_BRANCH" == "development" ]; then
-              # Release Flow: development -> main (Minor Bump)
-              # ex. 0.1.0 -> 0.2.0
               NEW_MINOR=$((MINOR + 1))
               NEW_VERSION="$MAJOR.$NEW_MINOR.0"
               echo "Strategy: Minor bump (Release)"
             else
-              # Hotfix Flow: hotfix/* -> main (Patch Bump)
-              # ex. 0.1.0 -> 0.1.1
               NEW_PATCH=$((PATCH + 1))
               NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
               echo "Strategy: Patch bump (Hotfix)"
             fi
 
-          # ==========================================
-          # LOGIC: Merge to DEVELOPMENT (Dev Build)
-          # ==========================================
+          # === DEVELOPMENT ===
           elif [ "$TARGET_BRANCH" == "development" ]; then
-            
-            # ตรวจสอบว่าเวอร์ชันปัจจุบันเป็น dev อยู่แล้วหรือไม่
             if [[ "$CURRENT_VERSION" == *"-dev."* ]]; then
-              # ถ้าเป็น dev อยู่แล้ว ให้เพิ่มเลขต่อท้าย
-              # ex. 0.1.0-dev.1 -> 0.1.0-dev.2
               LAST_NUM=${CURRENT_VERSION##*.}
               NEXT_NUM=$((LAST_NUM + 1))
               NEW_VERSION="${BASE_VERSION}-dev.${NEXT_NUM}"
             else
-              # ถ้ามาจาก version ปกติ ให้เริ่มนับ dev.1
-              # ex. 0.1.0 -> 0.1.0-dev.1
               NEW_VERSION="${BASE_VERSION}-dev.1"
             fi
             echo "Strategy: Dev increment"
-
           else
             echo "Error: Unknown target branch '$TARGET_BRANCH'"
             exit 1
@@ -133,19 +116,17 @@ jobs:
           echo "Pushing tag $TAG_NAME"
           
           git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          # ไม่ต้อง set-url เพราะใช้ token ในขั้นตอน checkout แล้ว
+          # Token ถูก set ตั้งแต่ checkout แล้ว จึง push ได้เลย
           git push origin "$TAG_NAME"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.event.pull_request.base.ref == 'main'
-        # Release ใช้ GITHUB_TOKEN ปกติได้ หรือจะใช้ PAT ก็ได้ถ้าต้องการ trigger workflow อื่นต่อ
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          token: ${{ steps.app-token.outputs.token }} # ใช้ App Token สร้าง Release
           tag_name: v${{ steps.new_version.outputs.version }}
           name: Release ${{ steps.new_version.outputs.version }}
-          generate_release_notes: true # ให้ GitHub Gen Note อัตโนมัติจาก PR
+          generate_release_notes: true
           body: |
             ## Release Details
             - **Version:** ${{ steps.new_version.outputs.version }}
